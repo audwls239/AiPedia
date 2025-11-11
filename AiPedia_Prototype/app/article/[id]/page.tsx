@@ -12,19 +12,40 @@ export default function ArticlePage({ params }: { params: { id: string } }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<typeof wikiData.articles>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const article = wikiData.articles.find((a) => a.id === params.id)
 
-  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  // 검색 처리 (API 요청)
+  const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchQuery.trim()) {
-      const results = wikiData.articles.filter(
-        (item) =>
-          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())),
-      )
-      setSearchResults(results)
+      setLoading(true)
       setIsSearching(true)
+      try {
+        const response = await fetch(
+          `http://127.0.0.1:8080/contents?prompt=${encodeURIComponent(searchQuery)}`,
+          { method: "GET" }
+        )
+        if (!response.ok) throw new Error("API 요청 실패")
+        const data = await response.json()
+
+        // API에서 받은 데이터를 wikiData 형식에 맞게 변환
+        const apiResult = {
+          id: "api-" + Date.now(),
+          title: data.prompt || searchQuery,
+          category: "검색결과",
+          content: data.contents || "결과를 불러올 수 없습니다.",
+          tags: [searchQuery],
+          updatedAt: new Date().toISOString(),
+        }
+
+        setSearchResults([apiResult])
+      } catch (error) {
+        console.error(error)
+        setSearchResults([])
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -34,17 +55,7 @@ export default function ArticlePage({ params }: { params: { id: string } }) {
     setIsSearching(false)
   }
 
-  if (!article && !isSearching) {
-    return (
-      <div className="min-h-screen bg-background">
-        <WikiHeader onLogoClick={() => {}} />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <p className="text-center text-muted-foreground text-lg">정보를 찾을 수 없습니다.</p>
-        </main>
-      </div>
-    )
-  }
-
+  // 검색 결과 표시
   if (isSearching) {
     return (
       <div className="min-h-screen bg-background">
@@ -73,20 +84,23 @@ export default function ArticlePage({ params }: { params: { id: string } }) {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold text-foreground mb-6">검색 결과 ({searchResults.length}개)</h2>
-            {searchResults.length === 0 ? (
+            <h2 className="text-2xl font-bold text-foreground mb-6">
+              검색 결과 {loading ? "로딩 중..." : `(${searchResults.length}개)`}
+            </h2>
+            {loading ? (
+              <p className="text-center text-muted-foreground py-8">불러오는 중...</p>
+            ) : searchResults.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">검색 결과가 없습니다.</p>
             ) : (
               <div className="grid gap-4">
                 {searchResults.map((result) => (
-                  <Link
+                  <div
                     key={result.id}
-                    href={`/article/${result.id}`}
                     className="p-4 rounded-lg bg-card border border-border hover:border-accent transition-colors"
                   >
                     <h3 className="text-lg font-semibold text-foreground mb-2">{result.title}</h3>
                     <p className="text-sm text-muted-foreground mb-3">
-                      {result.content.split("\n")[1] || result.content.substring(0, 100)}...
+                      {result.content.split("\n")[0].substring(0, 150)}...
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {result.tags.map((tag) => (
@@ -95,11 +109,23 @@ export default function ArticlePage({ params }: { params: { id: string } }) {
                         </span>
                       ))}
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}
           </div>
+        </main>
+      </div>
+    )
+  }
+
+  // 원래 문서 표시
+  if (!article) {
+    return (
+      <div className="min-h-screen bg-background">
+        <WikiHeader onLogoClick={() => {}} />
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <p className="text-center text-muted-foreground text-lg">정보를 찾을 수 없습니다.</p>
         </main>
       </div>
     )
@@ -135,7 +161,9 @@ export default function ArticlePage({ params }: { params: { id: string } }) {
             {article.category}
           </span>
           <h1 className="text-4xl font-bold text-foreground mb-3">{article.title}</h1>
-          <p className="text-sm text-muted-foreground">Updated {new Date(article.updatedAt).toLocaleDateString()}</p>
+          <p className="text-sm text-muted-foreground">
+            Updated {new Date(article.updatedAt).toLocaleDateString()}
+          </p>
         </div>
 
         <div className="space-y-6">
