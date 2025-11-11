@@ -34,6 +34,7 @@ public class AipediaService {
                 .build();
         }
         else {
+            System.out.println("===== CONTENTS CREATE =====");
 
             Mono<String> stringMono = webClient.post()
                 .uri("/generate")
@@ -42,8 +43,6 @@ public class AipediaService {
                 .bodyToMono(String.class);
 
             String data = stringMono.block();
-
-            System.out.println(data);
 
             String extractedContent;
             try {
