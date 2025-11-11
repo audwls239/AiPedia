@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: AiPedia
+
+  config:
+    import: optional:file:.env[.properties]
+
+  datasource:
+    url: ${DB_HOST}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
