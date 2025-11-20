@@ -1,15 +1,19 @@
 package team.goodmorning.aipedia.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class WebClientConfig {
+    @Value("${LLM_HOST}")
+    private String llmHost;
+
     @Bean
     public WebClient webClient(WebClient.Builder builder) {
         return builder
-            .baseUrl("http://192.168.0.3:8080/")
+            .baseUrl(llmHost)
             .build();
     }
 }
